@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// ConvertAndUpload convert the given video to 720 and 480 and uploads it to mongo gridfs
 func ConvertAndUpload(bucket *gridfs.Bucket, filePath string, fileName string) {
 	n := strings.Split(filePath, ".")
 	filePathHalf := strings.Join(n[:len(n)-1], ".")
@@ -15,8 +16,9 @@ func ConvertAndUpload(bucket *gridfs.Bucket, filePath string, fileName string) {
 
 	filePath720 := filePathHalf + "720." + extension
 	filePath480 := filePathHalf + "480." + extension
+	filePathTrailer := filePathHalf + "trailer." + extension
 
-	err := ConvertVideo(filePath, filePath720, filePath480)
+	err := ConvertVideo(filePath, filePath720, filePath480, filePathTrailer)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -40,14 +42,21 @@ func ConvertAndUpload(bucket *gridfs.Bucket, filePath string, fileName string) {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(id1, id2, id3)
+	i4, err := UploadToMongo(bucket, filePathTrailer, fileNameHalf+"trailer."+extension)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(id1, id2, id3, i4)
 
-	//os.Remove(filePath)
-	//os.Remove(filePath720)
-	//os.Remove(filePath480)
+	// cleanup the files after uploading
+	os.Remove(filePath)
+	os.Remove(filePath720)
+	os.Remove(filePath480)
+	os.Remove(filePathTrailer)
 }
 
-func ConvertVideo(filepath, filePath720, filePath480 string) error {
+func ConvertVideo(filepath, filePath720, filePath480, filePathTrailer string) error {
 	ffmpeg := exec.Command("ffmpeg", "-i", filepath, "-movflags", "faststart", "-strict", "-2", "-vf", "scale=-2:720", filePath720)
 	ffmpeg.Stdout = os.Stdout
 	err := ffmpeg.Run()
@@ -55,6 +64,12 @@ func ConvertVideo(filepath, filePath720, filePath480 string) error {
 		return err
 	}
 	ffmpeg = exec.Command("ffmpeg", "-i", filepath, "-movflags", "faststart", "-strict", "-2", "-vf", "scale=-2:480", filePath480)
+	ffmpeg.Stdout = os.Stdout
+	err = ffmpeg.Run()
+	if err != nil {
+		return err
+	}
+	ffmpeg = exec.Command("ffmpeg", "-t", "30", "-i", filepath, "-acodec", "copy", filePathTrailer)
 	ffmpeg.Stdout = os.Stdout
 	err = ffmpeg.Run()
 	return err

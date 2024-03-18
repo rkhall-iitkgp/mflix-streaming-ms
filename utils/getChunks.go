@@ -9,13 +9,14 @@ import (
 	"mflix/models"
 )
 
+// GetChunks downloads the particular chunks from mongo db collection
 func GetChunks(chunksCollection *mongo.Collection, filesId string, start, end uint64) ([]byte, error) {
-	// Selector for the chunks with n from start to end
 	var id, err = primitive.ObjectIDFromHex(filesId)
 	if err != nil {
 		return nil, err
 	}
 
+	// Selector for the chunks with n from start to end
 	chunkSelect := bson.D{
 		{"files_id", id},
 		{"n", bson.D{{"$gte", start}}},

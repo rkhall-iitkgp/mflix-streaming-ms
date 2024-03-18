@@ -17,8 +17,8 @@ func main() {
 		log.Fatalln("Error loading .env")
 	}
 	mongoUrl := os.Getenv("MONOG_URI")
-
 	ctx := context.Background()
+	// Connect to mongo db
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl))
 	defer func() {
 		if err = client.Disconnect(ctx); err != nil {
@@ -29,8 +29,9 @@ func main() {
 	db := client.Database("test")
 
 	app := fiber.New(fiber.Config{AppName: "mflix streaming", BodyLimit: 1024 * 1024 * 1024})
-	app.Get("/video/:file_id", api.StreamVideo(db))
 
+	// Register routes for uploading and streaming video
+	app.Get("/video/:file_id", api.StreamVideo(db))
 	app.Post("/video", api.UploadVideo(db))
 	app.Get("/", VideoHtml)
 
