@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
-	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"mflix/api"
 	"os"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func main() {
@@ -29,8 +31,13 @@ func main() {
 	db := client.Database("test")
 
 	app := fiber.New(fiber.Config{AppName: "mflix streaming", BodyLimit: 1024 * 1024 * 1024})
+	app.Use(cors.New())
 
-	// Register routes for uploading and streaming video
+	// Or extend your config for customization
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
 	app.Get("/video/:file_id", api.StreamVideo(db))
 	app.Post("/video", api.UploadVideo(db))
 	app.Get("/", VideoHtml)
