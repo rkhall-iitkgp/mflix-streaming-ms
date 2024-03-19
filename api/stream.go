@@ -31,21 +31,21 @@ func StreamVideo(db *mongo.Database) func(ctx *fiber.Ctx) error {
 		filesCollection := db.Collection("videos.files")
 
 		// Get the starting point from headers
-		reqRange := ctx.GetReqHeaders()["Range"][0]
-		start, err := strconv.ParseUint(strings.Split(strings.Split(reqRange, "=")[1], "-")[0], 10, 64)
+		requestedRange := ctx.GetReqHeaders()["Range"][0]
+		startByte, err := strconv.ParseUint(strings.Split(strings.Split(requestedRange, "=")[1], "-")[0], 10, 64)
 		if err != nil {
 			return ctx.Status(http.StatusInternalServerError).JSON(map[string]string{"err": err.Error()})
 		}
-		startChunk := start / ChunkSize
+		startChunk := startByte / ChunkSize
 
 		// Get the file id from params
-		id, err := primitive.ObjectIDFromHex(ctx.Params("file_id"))
+		fileId, err := primitive.ObjectIDFromHex(ctx.Params("file_id"))
 		if err != nil {
 			return ctx.Status(http.StatusInternalServerError).JSON(map[string]string{"err": err.Error()})
 		}
 
-		fileSelector := bson.D{{"_id", id}}
-		var foundFile models.FileStored
+		fileSelector := bson.D{{"_id", fileId}}
+		var foundFile models.FileInfo
 		if err := filesCollection.FindOne(context.TODO(), fileSelector).Decode(&foundFile); err != nil {
 			return ctx.Status(http.StatusInternalServerError).JSON(map[string]string{"err": err.Error()})
 		}
@@ -55,19 +55,19 @@ func StreamVideo(db *mongo.Database) func(ctx *fiber.Ctx) error {
 		chunksCollection := db.Collection("videos.chunks")
 
 		// Get the data in the chunks of the given chunk numbers
-		data, err := utils.GetChunks(chunksCollection, id.Hex(), startChunk, startChunk+1)
+		videoBytes, err := utils.GetChunks(chunksCollection, fileId.Hex(), startChunk, startChunk+1)
 		if err != nil {
 			return ctx.Status(http.StatusInternalServerError).JSON(map[string]string{"err": err.Error()})
 		}
 
 		// Set appropriate headers
 		ctx.Set("Content-Range",
-			fmt.Sprintf("bytes %d-%d/%d", start,
-				start+uint64(len(data))-1, foundFile.Length))
+			fmt.Sprintf("bytes %d-%d/%d", startByte,
+				startByte+uint64(len(videoBytes))-1, foundFile.Length))
 		ctx.Set("Accept-Ranges", "bytes")
-		ctx.Set("Content-Length", fmt.Sprint(len(data)))
+		ctx.Set("Content-Length", fmt.Sprint(len(videoBytes)))
 		ctx.Set("Content-Type", "video/mp4")
 
-		return ctx.Status(206).Send(data)
+		return ctx.Status(206).Send(videoBytes)
 	}
 }

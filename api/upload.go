@@ -22,20 +22,20 @@ func UploadVideo(db *mongo.Database) func(ctx *fiber.Ctx) error {
 			}
 		}()
 		// Get the file from body
-		file, err := c.FormFile("video")
+		uploadedFile, err := c.FormFile("video")
 		if err != nil {
 			return err
 		}
-		if file == nil {
+		if uploadedFile == nil {
 			_, err = c.Status(http.StatusBadRequest).WriteString("Not ok")
 			return err
 		}
-		fileBytes, err := file.Open()
+		fileBytes, err := uploadedFile.Open()
 
 		// Make a temporary file to store the content
-		fmt.Println(file.Header.Get("Content-Type"))
+		fmt.Println(uploadedFile.Header.Get("Content-Type"))
 		//extension, err := mime.ExtensionsByType(file.Header.Get("Content-Type"))
-		extension := filepath.Ext(file.Filename)
+		extension := filepath.Ext(uploadedFile.Filename)
 		tmpFile, err := os.CreateTemp("tmp", "mflix.*."+extension)
 		if err != nil {
 			return err
@@ -51,7 +51,7 @@ func UploadVideo(db *mongo.Database) func(ctx *fiber.Ctx) error {
 		}
 
 		// convert and upload the video on a separate go routine
-		go utils.ConvertAndUpload(bucket, tmpFile.Name(), file.Filename)
+		go utils.ConvertAndUploadVideo(bucket, tmpFile.Name(), uploadedFile.Filename, extension)
 
 		_, err = c.WriteString("OK")
 		return err

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type FileStored struct {
+type FileInfo struct {
 	Id         string    `bson:"_id"`
 	Length     uint64    `bson:"length"`
 	ChunkSize  uint64    `bson:"chunkSize"`

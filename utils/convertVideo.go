@@ -8,15 +8,14 @@ import (
 	"strings"
 )
 
-// ConvertAndUpload convert the given video to 720 and 480 and uploads it to mongo gridfs
-func ConvertAndUpload(bucket *gridfs.Bucket, filePath string, fileName string) {
+// ConvertAndUploadVideo convert the given video to 720 and 480 and uploads it to mongo gridfs
+func ConvertAndUploadVideo(bucket *gridfs.Bucket, filePath, fileName, extension string) {
 	n := strings.Split(filePath, ".")
-	filePathHalf := strings.Join(n[:len(n)-1], ".")
-	extension := n[len(n)-1]
+	filePathStem := strings.Join(n[:len(n)-1], ".")
 
-	filePath720 := filePathHalf + "720." + extension
-	filePath480 := filePathHalf + "480." + extension
-	filePathTrailer := filePathHalf + "trailer." + extension
+	filePath720 := filePathStem + "720." + extension
+	filePath480 := filePathStem + "480." + extension
+	filePathTrailer := filePathStem + "trailer." + extension
 
 	err := ConvertVideo(filePath, filePath720, filePath480, filePathTrailer)
 	if err != nil {
@@ -25,29 +24,29 @@ func ConvertAndUpload(bucket *gridfs.Bucket, filePath string, fileName string) {
 	}
 
 	n2 := strings.Split(fileName, ".")
-	fileNameHalf := strings.Join(n2[:len(n2)-1], ".")
+	fileNameStem := strings.Join(n2[:len(n2)-1], ".")
 
-	id1, err := UploadToMongo(bucket, filePath, fileName)
+	idOriginal, err := UploadToMongo(bucket, filePath, fileName)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	id2, err := UploadToMongo(bucket, filePath720, fileNameHalf+"720."+extension)
+	id720p, err := UploadToMongo(bucket, filePath720, fileNameStem+"720."+extension)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	id3, err := UploadToMongo(bucket, filePath480, fileNameHalf+"480."+extension)
+	id480p, err := UploadToMongo(bucket, filePath480, fileNameStem+"480."+extension)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	i4, err := UploadToMongo(bucket, filePathTrailer, fileNameHalf+"trailer."+extension)
+	idTrailer, err := UploadToMongo(bucket, filePathTrailer, fileNameStem+"trailer."+extension)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Println(id1, id2, id3, i4)
+	fmt.Println(idOriginal, id720p, id480p, idTrailer)
 
 	// cleanup the files after uploading
 	os.Remove(filePath)

@@ -17,21 +17,21 @@ func GetChunks(chunksCollection *mongo.Collection, filesId string, start, end ui
 	}
 
 	// Selector for the chunks with n from start to end
-	chunkSelect := bson.D{
+	chunkSelector := bson.D{
 		{"files_id", id},
 		{"n", bson.D{{"$gte", start}}},
 		{"n", bson.D{{"$lt", end}}},
 	}
 
 	// get the chunks from the given collection
-	foundChunks, err := chunksCollection.Find(context.TODO(), chunkSelect)
+	foundChunks, err := chunksCollection.Find(context.TODO(), chunkSelector)
 	if err != nil {
 		return nil, err
 	}
 
 	// unmarshal all the data
 	var allChunks []models.FileChunk
-	if err := foundChunks.All(context.TODO(), &allChunks); err != nil {
+	if err = foundChunks.All(context.TODO(), &allChunks); err != nil {
 		return nil, err
 	}
 

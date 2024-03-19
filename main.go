@@ -28,18 +28,19 @@ func main() {
 		}
 	}()
 
-	db := client.Database("test")
+	databaseConnection := client.Database("test")
 
 	app := fiber.New(fiber.Config{AppName: "mflix streaming", BodyLimit: 1024 * 1024 * 1024})
 	app.Use(cors.New())
 
-	// Or extend your config for customization
+	// Allow all origins to connect
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*",
 		AllowHeaders: "Origin, Content-Type, Accept",
 	}))
-	app.Get("/video/:file_id", api.StreamVideo(db))
-	app.Post("/video", api.UploadVideo(db))
+
+	app.Get("/video/:file_id", api.StreamVideo(databaseConnection))
+	app.Post("/video", api.UploadVideo(databaseConnection))
 	app.Get("/", VideoHtml)
 
 	log.Fatalln(app.Listen(":8080"))
