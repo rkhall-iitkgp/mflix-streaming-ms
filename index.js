@@ -4,8 +4,9 @@ const http = require('http');
 const WebSocket = require('ws');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
-const { Message } = require('./models/partyChatModel');
+const { partyChatModel } = require('./models/partyChatModel');
 const { send } = require('process');
+const { chatHistoryRouter } = require("./routes");
 
 const app = express();
 const server = http.createServer(app);
@@ -62,7 +63,7 @@ wss.on('connection', (ws) => {
                     rooms[currentRoomId].chatHistory.push(chatMessage); // Save to chat history
                     sendToRoom(currentRoomId, { type: 'chat', content: chatMessage });
 
-                    const message = new Message({
+                    const message = new partyChatModel({
                         roomId: currentRoomId,
                         messages: [
                             {
@@ -82,7 +83,7 @@ wss.on('connection', (ws) => {
                     rooms[currentRoomId].buttonPress[button] = isActive;
                     sendToRoom(currentRoomId, { type: 'button_state_change', button: button, isActive: isActive });
 
-                    const message = new Message({
+                    const message = new partyChatModel({
                         roomId: currentRoomId,
                         messages: [
                             {
@@ -103,7 +104,7 @@ wss.on('connection', (ws) => {
                 }
                 sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId });
 
-                const message = new Message({
+                const message = new partyChatModel({
                     roomId: currentRoomId,
                     messages: [
                         {
@@ -114,8 +115,60 @@ wss.on('connection', (ws) => {
                     ]
                 });
                 break;
+            case 'rejoin_room':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    rooms[currentRoomId].clients[clientId] = ws;
+                    ws.send(JSON.stringify({ type: 'rejoined_room', roomId: currentRoomId }));
 
+                    Object.entries(rooms[currentRoomId].buttonPress).forEach(([button, press]) => {
+                        ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
+                    });
+                    rooms[currentRoomId].chatHistory.forEach(chatMessage => {
+                        ws.send(JSON.stringify({ type: 'chat', content: chatMessage }));
+                    });
+                }
+            case 'leave_room':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    delete rooms[currentRoomId].clients[clientId];
+                    if (Object.keys(rooms[currentRoomId].clients).length === 0) {
+                        delete rooms[currentRoomId];
+                    }
+                }
+                sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId });
+                break;
+            case 'kick_user':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    if (clientId === rooms[currentRoomId].creator) {
+                        delete rooms[currentRoomId].clients[data.clientId];
+                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId });
+                    }
+                }
+                break;
+            case 'restrict_user_buttons':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    if (clientId === rooms[currentRoomId].creator) {
+                        sendToRoom(currentRoomId, { type: 'restrict_buttons', buttons: data.buttons });
+                    }
+                }
+                break;
+            case 'unrestrict_user_buttons':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    if (clientId === rooms[currentRoomId].creator) {
+                        sendToRoom(currentRoomId, { type: 'unrestrict_buttons' });
+                    }
+                }
+                break;
+            case 'get_chat_history':
+                partyChatModel.find({ roomId: currentRoomId }, (err, messages) => {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        ws.send(JSON.stringify({ type: 'chat_history', messages: messages }));
+                    }
+                });
+                break;
             
+
         }
     });
 
@@ -129,6 +182,9 @@ wss.on('connection', (ws) => {
         }
     });
 });
+
+app.use(express.json());
+app.use("/", chatHistoryRouter)
 
 server.listen(process.env.PORT || 5000, () => {
     console.log(`Server started on port ${server.address().port}`);
