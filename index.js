@@ -35,7 +35,7 @@ wss.on('connection', (ws) => {
             case 'create_room':
                 currentRoomId = uuidv4();
                 const roomCode = uuidv4().substring(0, 8);
-                rooms[currentRoomId] = { clients: { [clientId]: ws }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
+                rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
                 ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode }));
                 break;
 
@@ -43,7 +43,7 @@ wss.on('connection', (ws) => {
                 const roomToJoin = Object.values(rooms).find(room => room.roomCode === data.roomCode);
                 if (roomToJoin) {
                     currentRoomId = Object.keys(rooms).find(key => rooms[key] === roomToJoin);
-                    roomToJoin.clients[clientId] = ws;
+                    roomToJoin.clients[clientId] = {ws, username: data.username};
                     ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode }));
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
@@ -52,6 +52,7 @@ wss.on('connection', (ws) => {
                     roomToJoin.chatHistory.forEach(chatMessage => {
                         ws.send(JSON.stringify({ type: 'chat', content: chatMessage }));
                     });
+                    sendUserList(currentRoomId);
                 } else {
                     ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
                 }
@@ -100,6 +101,8 @@ wss.on('connection', (ws) => {
                     delete rooms[currentRoomId].clients[clientId];
                     if (Object.keys(rooms[currentRoomId].clients).length === 0) {
                         delete rooms[currentRoomId];
+                    } else {
+                        sendUserList(currentRoomId);
                     }
                 }
                 sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId });
@@ -117,8 +120,9 @@ wss.on('connection', (ws) => {
                 break;
             case 'rejoin_room':
                 if (currentRoomId && rooms[currentRoomId]) {
-                    rooms[currentRoomId].clients[clientId] = ws;
+                    rooms[currentRoomId].clients[clientId] = {ws, username: data.username};
                     ws.send(JSON.stringify({ type: 'rejoined_room', roomId: currentRoomId }));
+                    sendUserList(currentRoomId);
 
                     Object.entries(rooms[currentRoomId].buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -127,20 +131,13 @@ wss.on('connection', (ws) => {
                         ws.send(JSON.stringify({ type: 'chat', content: chatMessage }));
                     });
                 }
-            case 'leave_room':
-                if (currentRoomId && rooms[currentRoomId]) {
-                    delete rooms[currentRoomId].clients[clientId];
-                    if (Object.keys(rooms[currentRoomId].clients).length === 0) {
-                        delete rooms[currentRoomId];
-                    }
-                }
-                sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId });
                 break;
             case 'kick_user':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
                         delete rooms[currentRoomId].clients[data.clientId];
                         sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId });
+                        sendUserList(currentRoomId);
                     }
                 }
                 break;
@@ -182,6 +179,18 @@ wss.on('connection', (ws) => {
         }
     });
 });
+
+function sendUserList(roomId) {
+    const room = rooms[roomId];
+    if (!room) return;
+
+    const users = Object.entries(room.clients).map(([clientId, {username}]) => ({ clientId, username }));
+    const creatorWs = room.clients[room.creator]?.ws;
+
+    if (creatorWs && creatorWs.readyState === WebSocket.OPEN) {
+        creatorWs.send(JSON.stringify({ type: 'user_list', users, isCreator: true }));
+    }
+}
 
 app.use(express.json());
 app.use("/", chatHistoryRouter)
