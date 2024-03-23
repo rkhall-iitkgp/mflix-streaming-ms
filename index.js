@@ -4,7 +4,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
-const { Message } = require('./models/userModel');
+const { Message } = require('./models/partyChatModel');
+const { send } = require('process');
 
 const app = express();
 const server = http.createServer(app);
@@ -33,7 +34,7 @@ wss.on('connection', (ws) => {
             case 'create_room':
                 currentRoomId = uuidv4();
                 const roomCode = uuidv4().substring(0, 8);
-                rooms[currentRoomId] = { clients: { [clientId]: ws }, roomCode: roomCode, buttonColors: {}, chatHistory: [], creator: clientId };
+                rooms[currentRoomId] = { clients: { [clientId]: ws }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
                 ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode }));
                 break;
 
@@ -42,10 +43,10 @@ wss.on('connection', (ws) => {
                 if (roomToJoin) {
                     currentRoomId = Object.keys(rooms).find(key => rooms[key] === roomToJoin);
                     roomToJoin.clients[clientId] = ws;
-                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode}));
-                    
-                    Object.entries(roomToJoin.buttonColors).forEach(([button, color]) => {
-                        ws.send(JSON.stringify({ type: 'button_color_change', button: button, color: color }));
+                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode }));
+
+                    Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
+                        ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
                     });
                     roomToJoin.chatHistory.forEach(chatMessage => {
                         ws.send(JSON.stringify({ type: 'chat', content: chatMessage }));
@@ -54,7 +55,7 @@ wss.on('connection', (ws) => {
                     ws.send(JSON.stringify({ type: 'error', message: 'Room not found' }));
                 }
                 break;
-        
+
             case 'chat':
                 if (currentRoomId && rooms[currentRoomId]) {
                     const chatMessage = { content: data.content, username: data.username };
@@ -62,9 +63,14 @@ wss.on('connection', (ws) => {
                     sendToRoom(currentRoomId, { type: 'chat', content: chatMessage });
 
                     const message = new Message({
-                        username: data.username,
-                        content: data.content,
                         roomId: currentRoomId,
+                        messages: [
+                            {
+                                username: data.username,
+                                content: data.content,
+                                // event: data.event
+                            }
+                        ]
                     });
                     message.save();
                 }
@@ -73,10 +79,43 @@ wss.on('connection', (ws) => {
             case 'button_press':
                 if (currentRoomId && rooms[currentRoomId]) {
                     const { button, isActive } = data;
-                    rooms[currentRoomId].buttonColors[button] = isActive; 
+                    rooms[currentRoomId].buttonPress[button] = isActive;
                     sendToRoom(currentRoomId, { type: 'button_state_change', button: button, isActive: isActive });
+
+                    const message = new Message({
+                        roomId: currentRoomId,
+                        messages: [
+                            {
+                                username: data.username,
+                                // content: data.content,
+                                event: data.event
+                            }
+                        ]
+                    });
                 }
                 break;
+            case 'leave_room':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    delete rooms[currentRoomId].clients[clientId];
+                    if (Object.keys(rooms[currentRoomId].clients).length === 0) {
+                        delete rooms[currentRoomId];
+                    }
+                }
+                sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId });
+
+                const message = new Message({
+                    roomId: currentRoomId,
+                    messages: [
+                        {
+                            username: data.username,
+                            // content: data.content,
+                            event: `User ${data.username} left the room`
+                        }
+                    ]
+                });
+                break;
+
+            
         }
     });
 
@@ -84,7 +123,7 @@ wss.on('connection', (ws) => {
         if (currentRoomId && rooms[currentRoomId] && rooms[currentRoomId].clients[clientId]) {
             delete rooms[currentRoomId].clients[clientId];
             if (Object.keys(rooms[currentRoomId].clients).length === 0) {
-                
+
                 delete rooms[currentRoomId];
             }
         }
