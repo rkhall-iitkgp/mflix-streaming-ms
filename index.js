@@ -22,8 +22,8 @@ wss.on('connection', (ws) => {
 
     const sendToRoom = (roomId, message) => {
         Object.values(rooms[roomId].clients).forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify(message));
+            if (client.ws.readyState === WebSocket.OPEN) {
+                client.ws.send(JSON.stringify(message));
             }
         });
     };
@@ -42,9 +42,12 @@ wss.on('connection', (ws) => {
             case 'join_room':
                 const roomToJoin = Object.values(rooms).find(room => room.roomCode === data.roomCode);
                 if (roomToJoin) {
+                    console.log("hi1");
                     currentRoomId = Object.keys(rooms).find(key => rooms[key] === roomToJoin);
+                    console.log("hi2");
                     roomToJoin.clients[clientId] = {ws, username: data.username};
-                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode }));
+                    console.log("hi3",data);
+                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username }));
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -99,13 +102,14 @@ wss.on('connection', (ws) => {
             case 'leave_room':
                 if (currentRoomId && rooms[currentRoomId]) {
                     delete rooms[currentRoomId].clients[clientId];
+                    rooms[currentRoomId].clients[clientId].ws.close();
                     if (Object.keys(rooms[currentRoomId].clients).length === 0) {
                         delete rooms[currentRoomId];
                     } else {
                         sendUserList(currentRoomId);
                     }
                 }
-                sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId });
+                sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId, username: data.username });
 
                 const message = new partyChatModel({
                     roomId: currentRoomId,
@@ -123,6 +127,7 @@ wss.on('connection', (ws) => {
                     rooms[currentRoomId].clients[clientId] = {ws, username: data.username};
                     ws.send(JSON.stringify({ type: 'rejoined_room', roomId: currentRoomId }));
                     sendUserList(currentRoomId);
+                    sendToRoom(currentRoomId, { type: 'user_rejoined', clientId: clientId, username: data.username });
 
                     Object.entries(rooms[currentRoomId].buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -130,11 +135,22 @@ wss.on('connection', (ws) => {
                     rooms[currentRoomId].chatHistory.forEach(chatMessage => {
                         ws.send(JSON.stringify({ type: 'chat', content: chatMessage }));
                     });
+                    const message = new partyChatModel({
+                        roomId: currentRoomId,
+                        messages: [
+                            {
+                                username: data.username,
+                                // content: data.content,
+                                event: `User ${data.username} rejoined the room`
+                            }
+                        ]
+                    });
                 }
                 break;
             case 'kick_user':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
+                        rooms[currentRoomId].clients[data.clientId].ws.close();
                         delete rooms[currentRoomId].clients[data.clientId];
                         sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId });
                         sendUserList(currentRoomId);
@@ -144,14 +160,15 @@ wss.on('connection', (ws) => {
             case 'restrict_user_buttons':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
-                        sendToRoom(currentRoomId, { type: 'restrict_buttons', buttons: data.buttons });
+                        // restrict buttons of a particulat selected client
+                        sendToRoom(currentRoomId, { type: 'restrict_buttons', buttons: data.buttons, clientId: data.clientId });
                     }
                 }
                 break;
             case 'unrestrict_user_buttons':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
-                        sendToRoom(currentRoomId, { type: 'unrestrict_buttons' });
+                        sendToRoom(currentRoomId, { type: 'unrestrict_buttons', buttons: data.buttons, clientId: data.clientId });
                     }
                 }
                 break;
