@@ -16,40 +16,154 @@ async function convertAndUploadToS3(inputVideo, movieName, wss) {
 		{ name: "360", resolution: "640x360", bitrate: "2000k" },
 		{ name: "720", resolution: "1280x720", bitrate: "3000k" },
 		{ name: "1080", resolution: "1920x1080", bitrate: "4000k" },
-		// { name: "2160", resolution: "3840x2160", bitrate: "8000k" },
+		{ name: "trailer", resolution: "640x360" },
 	]; // Resolutions for HLS conversion
 	// const inputVideo = "input.mkv"; // Your input video file
 	// const movieName = "movie4";
 	const inputpath = path.join(__dirname, inputVideo);
 	console.log("inputpath", inputpath);
-	var fileuploaded = 0;
+	var thumbs = [];
 	await Promise.all(
 		resolutions.map((resolution) => {
-			return convertVideo(
-				inputpath,
-				resolution,
-				resolutions,
-				fileuploaded,
-				movieName,
-				wss
-			);
+			if (resolution.name === "trailer") {
+				return generateThumbs(inputpath, movieName, wss, thumbs);
+			}
+			return convertVideo(inputpath, resolution, movieName, wss);
 		})
 	);
+
 	generateMasterPlaylist(movieName, resolutions);
+
 	console.log("delete");
-	return `https://mflix-vids.s3.ap-south-1.amazonaws.com/movies/${movieName}/master.m3u8`;
+
+	return {
+		vidsrc: `https://mflix-vids.s3.amazonaws.com/movies/${movieName}/master.m3u8`,
+		trailersrc: `https://mflix-vids.s3.amazonaws.com/movies/${movieName}/trailer/trailer.mp4`,
+		thumbs,
+	};
 }
 
-async function convertVideo(
+async function generateThumbs(
 	inputFile,
-	resolution,
-	resolutions,
-	fileuploaded,
 	movieName,
-	wss
+	wss,
+	thumbs,
+	frameRate = "1/24",
+	outputPattern = "thumb%04d.jpg"
 ) {
 	return new Promise((resolve, reject) => {
+		const outputFolder = `temp/${movieName}/trailer`;
+		const outputFolderpath = `${movieName}/trailer`;
+		fs.mkdirSync(outputFolder, { recursive: true });
+		ffmpeg(inputFile)
+			.output(`${outputFolder}/${outputPattern}`)
+			.videoFilters(`fps=fps=${frameRate}`)
+			.on("error", (err) => {
+				console.error("Error occurred: " + err);
+			})
+			.on("end", async (end) => {
+				fs.readdir(outputFolder, (err, files) => {
+					files.forEach((file) => {
+						thumbs.push(
+							`https://mflix-vids.s3.amazonaws.com/movies/${movieName}/trailer/${file}`
+						);
+					});
+				});
+				await generateTrailer(inputFile, movieName, wss);
+				uploadToS3(outputFolderpath)
+					.then(async (res) => {
+						await res;
+						console.log("resolved");
+						resolve();
+					})
+					.catch((err) => {
+						reject(err);
+					});
+			})
+			.on("progress", (progress) => {
+				console.log(
+					"progress",
+					50 + (progress.percent / 100) * (50 / 1),
+					progress.percent,
+					"thubs"
+				);
+				if (progress.percent) {
+					wss.clients.forEach((client) => {
+						if (client.readyState === WebSocket.OPEN) {
+							client.send(
+								JSON.stringify({
+									progress: Math.floor(
+										50 + (progress.percent / 100) * (50 / 1)
+									),
+								})
+							);
+						}
+					});
+				}
+			})
+			.run();
+	});
+}
+async function generateTrailer(
+	inputFile,
+	movieName,
+	wss,
+	frameRate = "1/0.6",
+	outputVideo = "trailer.mp4"
+) {
+	return new Promise((resolve, reject) => {
+		const outputFolder = `temp/${movieName}/trailer`;
+		const outputFolderpath = `${movieName}/trailer`;
+		fs.mkdirSync(outputFolder, { recursive: true });
+		ffmpeg()
+			.input(`${outputFolder}/thumb%04d.jpg`)
+			.inputFPS(frameRate)
+			.output(`${outputFolder}/${outputVideo}`)
+			.outputOptions(["-pix_fmt yuv420p"])
+			.size("854x480")
+			.on("error", (err) => {
+				console.error("Error occurred: " + err);
+			})
+			.on("end", () => {
+				uploadToS3(outputFolderpath)
+					.then(async (res) => {
+						await res;
+						console.log("resolved");
+						resolve();
+					})
+					.catch((err) => {
+						reject(err);
+					});
+			})
+			.on("progress", (progress) => {
+				console.log(
+					"progress",
+					50 + (progress.percent / 10000) * (50 / 1),
+					progress.percent / 100,
+					"trailer"
+				);
+				if (progress.percent) {
+					wss.clients.forEach((client) => {
+						if (client.readyState === WebSocket.OPEN) {
+							client.send(
+								JSON.stringify({
+									progress: Math.floor(
+										50 + (progress.percent / 100) * (50 / 1)
+									),
+								})
+							);
+						}
+					});
+				}
+			})
+			.run();
+	});
+}
+
+async function convertVideo(inputFile, resolution, movieName, wss) {
+	return new Promise((resolve, reject) => {
 		const outputFolder = `temp/${movieName}/${resolution.name}p`;
+		const outputFolderpath = `${movieName}/${resolution.name}p`;
 		fs.mkdirSync(outputFolder, { recursive: true });
 		ffmpeg(inputFile)
 			.output(`${outputFolder}/index.m3u8`)
@@ -67,13 +181,7 @@ async function convertVideo(
 			})
 			.on("end", () => {
 				console.log("Conversion finished");
-				fileuploaded = fileuploaded + 1;
-				console.log("fileuploaded", fileuploaded);
-				uploadToS3(
-					outputFolder,
-
-					fileuploaded
-				)
+				uploadToS3(outputFolderpath)
 					.then(async (res) => {
 						await res;
 						console.log("resolved");
@@ -86,10 +194,9 @@ async function convertVideo(
 			.on("progress", (progress) => {
 				console.log(
 					"progress",
-					50 + (fileuploaded + 1) * (progress.percent / 100) * (25 / 1),
+					50 + (progress.percent / 100) * (50 / 1),
 					progress.percent,
-					fileuploaded,
-					1
+					resolution.name
 				);
 				if (progress.percent) {
 					wss.clients.forEach((client) => {
@@ -97,8 +204,7 @@ async function convertVideo(
 							client.send(
 								JSON.stringify({
 									progress: Math.floor(
-										50 +
-											(fileuploaded + 1) * (progress.percent / 100) * (50 / 1)
+										50 + (progress.percent / 100) * (50 / 1)
 									),
 								})
 							);
@@ -142,16 +248,16 @@ function generateMasterPlaylist(movieName, resolutions) {
 			console.log(
 				"Master playlist file uploaded successfully: " + data.Location
 			);
-			deleteLocalFile(masterPlaylist);
+			deleteLocalFile(masterPlaylistpath);
 
-			deleteLocalFolder(movieName);
+			deleteLocalFolder("temp/" + movieName);
 		});
 	});
 }
 
-async function uploadToS3(folder, fileuploaded) {
+async function uploadToS3(folder) {
 	return new Promise((resolve, reject) => {
-		fs.readdir(folder, async (err, files) => {
+		fs.readdir("temp/" + folder, async (err, files) => {
 			if (err) {
 				console.error("Error reading directory: " + err.message);
 				reject(err);
@@ -160,7 +266,7 @@ async function uploadToS3(folder, fileuploaded) {
 			await Promise.all(
 				files.map((file, id) => {
 					return new Promise(async (resolve, reject) => {
-						const filePath = `${folder}/${file}`;
+						const filePath = `temp/${folder}/${file}`;
 						const s3Key = `movies/${folder}/${file}`;
 						fs.readFile(filePath, (err, data) => {
 							if (err) {
@@ -185,17 +291,9 @@ async function uploadToS3(folder, fileuploaded) {
 								deleteLocalFile(filePath);
 							});
 						});
-						console.log(
-							"progress: ",
-							50 + fileuploaded * ((parseInt(id) + 1) / files.length) * (25 / 1)
-						);
 					});
 				})
 			);
-			console.log("fileuploaded", fileuploaded);
-			// if (fileuploaded == 2) {
-			// 	generateMasterPlaylist(movieName, resolutions);
-			// }
 			resolve();
 		});
 	});
