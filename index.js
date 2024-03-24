@@ -32,6 +32,20 @@ wss.on('connection', (ws) => {
         const data = JSON.parse(message);
 
         switch (data.type) {
+            case 'watch':
+                if (currentWatcher === null) {
+                    currentWatcher = clientId;
+                    ws.send(JSON.stringify({ type: 'watchAllowed' }));
+                } else {
+                    ws.send(JSON.stringify({ type: 'watchDenied', message: 'Someone is already watching' }));
+                }
+                break;
+
+            case 'stopWatching':
+                if (currentWatcher === clientId) {
+                    currentWatcher = null;
+                }
+                break;
             case 'create_room':
                 currentRoomId = uuidv4();
                 const roomCode = uuidv4().substring(0, 8);
