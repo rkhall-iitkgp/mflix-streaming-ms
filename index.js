@@ -62,7 +62,7 @@ wss.on('connection', (ws) => {
                     console.log("hi2");
                     roomToJoin.clients[clientId] = {ws, username: data.username};
                     console.log("hi3",data);
-                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username }));
+                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId }));
                     sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} joined the room`, username: 'Server' } });
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
@@ -172,7 +172,7 @@ wss.on('connection', (ws) => {
             case 'kick_user':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
-                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId });
+                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId, username: data.username });
                         rooms[currentRoomId].clients[data.clientId].ws.close();
                         delete rooms[currentRoomId].clients[data.clientId];
                         sendUserList(currentRoomId);
