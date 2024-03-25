@@ -51,6 +51,7 @@ wss.on('connection', (ws) => {
                 const roomCode = uuidv4().substring(0, 8);
                 rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
                 ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode }));
+                sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} created the room`, username: 'Server' } });
                 break;
 
             case 'join_room':
@@ -62,6 +63,7 @@ wss.on('connection', (ws) => {
                     roomToJoin.clients[clientId] = {ws, username: data.username};
                     console.log("hi3",data);
                     ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username }));
+                    sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} joined the room`, username: 'Server' } });
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -115,8 +117,14 @@ wss.on('connection', (ws) => {
                 break;
             case 'leave_room':
                 if (currentRoomId && rooms[currentRoomId]) {
-                    delete rooms[currentRoomId].clients[clientId];
+                    if (rooms[currentRoomId].creator === clientId) {
+                        rooms[currentRoomId].clients[clientId].ws.close();
+                        delete rooms[currentRoomId].clients[clientId];
+                        
+                    } else {
                     rooms[currentRoomId].clients[clientId].ws.close();
+                    delete rooms[currentRoomId].clients[clientId];
+                    }
                     if (Object.keys(rooms[currentRoomId].clients).length === 0) {
                         delete rooms[currentRoomId];
                     } else {
@@ -164,9 +172,9 @@ wss.on('connection', (ws) => {
             case 'kick_user':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
+                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId });
                         rooms[currentRoomId].clients[data.clientId].ws.close();
                         delete rooms[currentRoomId].clients[data.clientId];
-                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId });
                         sendUserList(currentRoomId);
                     }
                 }
