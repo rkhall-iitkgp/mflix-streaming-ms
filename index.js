@@ -229,7 +229,7 @@ app.use("/enc.key", express.static(path.join(__dirname, "enc.key")));
 app.get("/", (req, res) => {
 	res.send(
 		"HLS video server is running. Access the videos at /videos/output.m3u8"
-	);
+    )});
 
 function sendUserList(roomId) {
     const room = rooms[roomId];
@@ -244,7 +244,7 @@ function sendUserList(roomId) {
 }
 
 app.use(express.json());
-app.use("/", chatHistoryRouter)
+app.use("/", chatHistoryRouter);
 
 server.listen(process.env.PORT || 5000, () => {
 	console.log(`Server started on port ${server.address().port}`);
