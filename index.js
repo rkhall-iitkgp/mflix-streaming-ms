@@ -51,7 +51,7 @@ wss.on('connection', (ws) => {
                 const roomCode = uuidv4().substring(0, 8);
                 rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
                 ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode }));
-                sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} created the room`, username: 'Server' } });
+                // sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} created the room`, username: 'Server' } });
                 break;
 
             case 'join_room':
@@ -210,9 +210,10 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         if (currentRoomId && rooms[currentRoomId] && rooms[currentRoomId].clients[clientId]) {
+            console.log("is it here")
             delete rooms[currentRoomId].clients[clientId];
+            sendUserList(currentRoomId)
             if (Object.keys(rooms[currentRoomId].clients).length === 0) {
-
                 delete rooms[currentRoomId];
             }
         }
