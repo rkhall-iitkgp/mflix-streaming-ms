@@ -1,4 +1,8 @@
 require('dotenv').config();
+const cors = require("cors");
+const path = require("path");
+const bodyParser = require("body-parser");
+const fileUpload = require("express-fileupload");
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -15,6 +19,16 @@ const wss = new WebSocket.Server({ server });
 mongoose.connect(process.env.MONGO_URI);
 
 const rooms = {};
+
+// wss.on("connection", function connection(ws) {
+// 	ws.isAlive = true;
+// 	ws.on("pong", () => (ws.isAlive = true));
+// });
+// wss.on("connection", function connection(ws) {
+// 	ws.on("message", function incoming(message) {
+// 		console.log("received: %s", message);
+// 	});
+// });
 
 wss.on('connection', (ws) => {
     let currentRoomId = null;
@@ -206,6 +220,16 @@ wss.on('connection', (ws) => {
         }
     });
 });
+app.use(cors());
+app.use(fileUpload());
+app.use(bodyParser.json());
+app.use("/", require("./Router/streamingRouter"));
+module.exports = { wss };
+app.use("/enc.key", express.static(path.join(__dirname, "enc.key")));
+app.get("/", (req, res) => {
+	res.send(
+		"HLS video server is running. Access the videos at /videos/output.m3u8"
+	);
 
 function sendUserList(roomId) {
     const room = rooms[roomId];
@@ -223,5 +247,5 @@ app.use(express.json());
 app.use("/", chatHistoryRouter)
 
 server.listen(process.env.PORT || 5000, () => {
-    console.log(`Server started on port ${server.address().port}`);
+	console.log(`Server started on port ${server.address().port}`);
 });
