@@ -19,6 +19,7 @@
     "express-fileupload": "^1.5.0",
     "fluent-ffmpeg": "^2.1.2",
     "mongoose": "^8.2.3",
+    "node-fetch": "^3.3.2",
     "uuid": "^9.0.1",
     "ws": "^8.16.0"
   }
