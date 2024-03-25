@@ -32,24 +32,11 @@ wss.on('connection', (ws) => {
         const data = JSON.parse(message);
 
         switch (data.type) {
-            case 'watch':
-                if (currentWatcher === null) {
-                    currentWatcher = clientId;
-                    ws.send(JSON.stringify({ type: 'watchAllowed' }));
-                } else {
-                    ws.send(JSON.stringify({ type: 'watchDenied', message: 'Someone is already watching' }));
-                }
-                break;
-
-            case 'stopWatching':
-                if (currentWatcher === clientId) {
-                    currentWatcher = null;
-                }
-                break;
+            
             case 'create_room':
                 currentRoomId = uuidv4();
                 const roomCode = uuidv4().substring(0, 8);
-                rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
+                rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username, videoLink: data.videoLink } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
                 ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode }));
                 // sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} created the room`, username: 'Server' } });
                 break;
@@ -62,7 +49,7 @@ wss.on('connection', (ws) => {
                     console.log("hi2");
                     roomToJoin.clients[clientId] = {ws, username: data.username};
                     console.log("hi3",data);
-                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId }));
+                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink }));
                     sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} joined the room`, username: 'Server' } });
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
