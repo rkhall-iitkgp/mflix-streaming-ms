@@ -6,9 +6,9 @@ const {
 const router = express.Router();
 const fs = require("fs");
 const WebSocket = require("ws");
-const { wss } = require("../index");
 const path = require("path");
-
+const { wss } = require("../index");
+const { default: axios } = require("axios");
 router.post("/upload", (req, res) => {
 	if (!req.files || Object.keys(req.files).length === 0) {
 		return res.status(400).send("No files were uploaded.");
@@ -63,6 +63,8 @@ router.post("/upload-from-url", async (req, res) => {
 			"../temp/uploads",
 			videoName + fileName
 		);
+
+		const uploadfilePath = "../temp/uploads/" + videoName + fileName;
 		const fileStream = fs.createWriteStream(filePath);
 		let totalSize = 0;
 		if (response.headers["content-length"]) {
@@ -86,7 +88,7 @@ router.post("/upload-from-url", async (req, res) => {
 
 		fileStream.on("finish", () => {
 			console.log("filePath,fileName", filePath, "movie12");
-			convertAndUploadToS3(filePath, videoName, wss).then((uploadurl) => {
+			convertAndUploadToS3(uploadfilePath, videoName, wss).then((uploadurl) => {
 				wss.clients.forEach((client) => {
 					if (client.readyState === WebSocket.OPEN) {
 						client.send(JSON.stringify({ progress: 100 }));
