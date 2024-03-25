@@ -20,17 +20,9 @@ mongoose.connect(process.env.MONGO_URI);
 
 const rooms = {};
 
-// wss.on("connection", function connection(ws) {
-// 	ws.isAlive = true;
-// 	ws.on("pong", () => (ws.isAlive = true));
-// });
-// wss.on("connection", function connection(ws) {
-// 	ws.on("message", function incoming(message) {
-// 		console.log("received: %s", message);
-// 	});
-// });
-
 wss.on('connection', (ws) => {
+    ws.isAlive = true; // Check if connection is alive
+    ws.on('pong', () => (ws.isAlive = true)); // Check if connection is alive
     let currentRoomId = null;
     const clientId = uuidv4();
 
@@ -43,6 +35,9 @@ wss.on('connection', (ws) => {
     };
 
     ws.on('message', (message) => {
+        
+        console.log('received: %s', message);
+
         const data = JSON.parse(message);
 
         switch (data.type) {
