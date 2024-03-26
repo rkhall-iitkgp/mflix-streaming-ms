@@ -13,44 +13,45 @@ const { send } = require("process");
 const { chatHistoryRouter } = require("./routes");
 // Use dynamic import to load node-fetch
 
-const wss = new WebSocket.Server({ noServer: true });
-
-let fetch;
-import('node-fetch').then(module => {
-  fetch = module.default;
-  server.on('upgrade',  async (request, socket, head) => {
-    const cookies = request.headers.cookie
-    try {
-        const response = await fetch('https://971edtce1a.execute-api.ap-south-1.amazonaws.com/auth/verify', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                'Cookie': cookies
-    },
-    credentials: 'include'
-    });
-
-    const data = await response.json();
-    if (data.success && data.account && data.subscriptionTier.tier.tier == 'Tier 1' ) {
-        wss.handleUpgrade(request, socket, head, (ws) => {
-            wss.emit('connection', ws, request);
-        });
-    } else {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-    }
-    } catch (error) {
-        console.error(error);
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-        socket.destroy();
-    }  
-});
-  // Place the code that depends on `fetch` here or inside another function that gets called after this promise resolves.
-});
-
-
 const app = express();
 const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// let fetch;
+// import('node-fetch').then(module => {
+//   fetch = module.default;
+//   server.on('upgrade',  async (request, socket, head) => {
+//     const cookies = request.headers.cookie
+//     try {
+//         const response = await fetch('https://971edtce1a.execute-api.ap-south-1.amazonaws.com/auth/verify', {
+//             method: 'GET',
+//             headers: {
+//                 'Content-Type': 'application/json',
+//                 'Cookie': cookies
+//     },
+//     credentials: 'include'
+//     });
+
+//     const data = await response.json();
+//     if (data.success && data.account && data.subscriptionTier.tier.tier == 'Tier 1' ) {
+//         wss.handleUpgrade(request, socket, head, (ws) => {
+//             wss.emit('connection', ws, request);
+//         });
+//     } else {
+//         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+//         socket.destroy();
+//     }
+//     } catch (error) {
+//         console.error(error);
+//         socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+//         socket.destroy();
+//     }  
+// });
+//   // Place the code that depends on `fetch` here or inside another function that gets called after this promise resolves.
+// });
+
+
+
 module.exports = { wss };
 
 mongoose.connect(process.env.MONGO_URI);
@@ -288,12 +289,12 @@ function sendUserList(roomId) {
 app.use(express.json());
 app.use("/", chatHistoryRouter);
 
-// server.listen(process.env.PORT || 5000, () => {
-// 	console.log(`Server started on port ${server.address().port}`);
-// });
+server.listen(process.env.PORT || 5000, () => {
+	console.log(`Server started on port ${server.address().port}`);
+});
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-    console.log(`Server running at PORT: ${PORT}`);
-});
+// app.listen(PORT, () => {
+//     console.log(`Server running at PORT: ${PORT}`);
+// });
