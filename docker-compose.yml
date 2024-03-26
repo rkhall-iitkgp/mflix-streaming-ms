@@ -1,0 +1,32 @@
+version: "4"
+services:
+  # redis:
+  #   container_name: redis
+  #   image: "redis:6.2-alpine"
+  #   restart: on-failure
+  #   ports:
+  #     - "6379:6379"
+  #   command: redis-server
+  #   volumes:
+  #     - redis-data:/data
+  app:
+    container_name: mflix-streaming-ms
+    build: .
+    ports:
+      - "5000:5000"
+    # environment:
+    #   - REDIS_HOST=redis
+    # depends_on:
+    #   - redis
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.70'
+    #       memory: 2048M
+
+volumes:
+    redis-data:
+        driver: local

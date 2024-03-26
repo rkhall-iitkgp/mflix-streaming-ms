@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /home/ubuntu/mflix-streaming-ms
+sudo docker-compose down
+sudo docker-compose up -d

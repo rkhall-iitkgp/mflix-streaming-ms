@@ -288,6 +288,12 @@ function sendUserList(roomId) {
 app.use(express.json());
 app.use("/", chatHistoryRouter);
 
-server.listen(process.env.PORT || 5000, () => {
-	console.log(`Server started on port ${server.address().port}`);
+// server.listen(process.env.PORT || 5000, () => {
+// 	console.log(`Server started on port ${server.address().port}`);
+// });
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+    console.log(`Server running at PORT: ${PORT}`);
 });
