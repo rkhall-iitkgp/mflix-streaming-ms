@@ -75,8 +75,8 @@ wss.on('connection', (ws) => {
             if (client.ws.readyState === WebSocket.OPEN) {
                 let personalizedMessage = { ...message };
 
-                personalizedMessage.type == client.clientId == senderId ? 'outgoing_message' : 'incoming_message';
-                client.ws.send(JSON.stringify(personalizedMessage));
+                personalizedMessage.type = client.clientId === senderId ? 'outgoing_message' : 'incoming_message';
+                ws.send(JSON.stringify(personalizedMessage));
             }
         });
     };
@@ -93,7 +93,7 @@ wss.on('connection', (ws) => {
                 currentRoomId = uuidv4();
                 const roomCode = uuidv4().substring(0, 8);
                 rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username, videoLink: data.videoLink } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
-                ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode }));
+                ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode, username, clientId: clientId, videoLink: data.videoLink }));
                 // sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} created the room`, username: 'Server' } });
                 break;
 
@@ -106,7 +106,7 @@ wss.on('connection', (ws) => {
                     roomToJoin.clients[clientId] = {ws, username: data.username};
                     console.log("hi3",data);
                     ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink }));
-                    // sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} joined the room`, username: 'Server' } });
+                    sendToRoom(currentRoomId, { type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink  });
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -122,9 +122,9 @@ wss.on('connection', (ws) => {
 
             case 'chat':
                 if (currentRoomId && rooms[currentRoomId]) {
-                    const chatMessage = { content: data.content, username: data.username };
+                    const chatMessage = { text: data.content, username: data.username };
                     rooms[currentRoomId].chatHistory.push(chatMessage); // Save to chat history
-                    sendToRoom(currentRoomId, { type: 'chat', content: chatMessage }, clientId);
+                    sendToRoom(currentRoomId, { type: 'chat', content: chatMessage }, clientId); // send only content
 
                     const message = new partyChatModel({
                         roomId: currentRoomId,
