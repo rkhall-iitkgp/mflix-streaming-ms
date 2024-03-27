@@ -76,7 +76,9 @@ wss.on('connection', (ws) => {
                 let personalizedMessage = { ...message };
                 console.log('cjsd',clientId)
 
-                personalizedMessage.type = client.clientId === senderId ? 'outgoing_message' : 'incoming_message';
+                if (personalizedMessage.type === 'chat') {
+                    personalizedMessage.type = client.clientId === senderId ? 'outgoing_message' : 'incoming_message';
+                }
                 console.log('personal',personalizedMessage, client.clientId, senderId);
                 ws.send(JSON.stringify(personalizedMessage));
             }
