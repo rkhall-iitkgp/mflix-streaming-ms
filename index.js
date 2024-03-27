@@ -109,8 +109,8 @@ wss.on('connection', (ws) => {
                     console.log("hi2");
                     roomToJoin.clients[clientId] = {ws, username: data.username};
                     console.log("hi3",data);
-                    ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink }));
-                    sendToRoom(currentRoomId, { type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink  });
+                    // ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink }));
+                    sendToRoom(currentRoomId, { type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink  }, clientId);
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -192,17 +192,17 @@ wss.on('connection', (ws) => {
             case 'leave_room':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (rooms[currentRoomId].creator === clientId) {
-                        sendToRoom(currentRoomId, { type: 'room_closed' });
+                        sendToRoom(currentRoomId, { type: 'room_closed' }, clientId);
                         rooms[currentRoomId].clients[clientId].ws.close();
                         delete rooms[currentRoomId].clients[clientId];
                         
                     } else {
-                    sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId, username: data.username });
+                    sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId, username: data.username }, clientId);
                     rooms[currentRoomId].clients[clientId].ws.close();
                     delete rooms[currentRoomId].clients[clientId];
                     }
                     if (Object.keys(rooms[currentRoomId].clients).length === 0) {
-                        sendToRoom(currentRoomId, { type: 'room_closed' });
+                        sendToRoom(currentRoomId, { type: 'room_closed' }, clientId);
                         delete rooms[currentRoomId];
                     } else {
                         sendUserList(currentRoomId);
@@ -226,7 +226,7 @@ wss.on('connection', (ws) => {
                     rooms[currentRoomId].clients[clientId] = {ws, username: data.username};
                     ws.send(JSON.stringify({ type: 'rejoined_room', roomId: currentRoomId }));
                     sendUserList(currentRoomId);
-                    sendToRoom(currentRoomId, { type: 'user_rejoined', clientId: clientId, username: data.username });
+                    sendToRoom(currentRoomId, { type: 'user_rejoined', clientId: clientId, username: data.username }, clientId);
 
                     Object.entries(rooms[currentRoomId].buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -249,7 +249,7 @@ wss.on('connection', (ws) => {
             case 'kick_user':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
-                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId, username: data.username });
+                        sendToRoom(currentRoomId, { type: 'user_left', clientId: data.clientId, username: data.username }, clientId);
                         rooms[currentRoomId].clients[data.clientId].ws.close();
                         delete rooms[currentRoomId].clients[data.clientId];
                         sendUserList(currentRoomId);
@@ -260,14 +260,14 @@ wss.on('connection', (ws) => {
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
                         // restrict buttons of a particulat selected client
-                        sendToRoom(currentRoomId, { type: 'restrict_buttons', buttons: data.buttons, clientId: data.clientId });
+                        sendToRoom(currentRoomId, { type: 'restrict_buttons', buttons: data.buttons, clientId: data.clientId }, clientId);
                     }
                 }
                 break;
             case 'unrestrict_user_buttons':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (clientId === rooms[currentRoomId].creator) {
-                        sendToRoom(currentRoomId, { type: 'unrestrict_buttons', buttons: data.buttons, clientId: data.clientId });
+                        sendToRoom(currentRoomId, { type: 'unrestrict_buttons', buttons: data.buttons, clientId: data.clientId }, clientId);
                     }
                 }
                 break;
