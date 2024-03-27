@@ -76,10 +76,11 @@ wss.on('connection', (ws) => {
                 let personalizedMessage = { ...message };
 
                 personalizedMessage.type = client.clientId === senderId ? 'outgoing_message' : 'incoming_message';
+                console.log('personal',personalizedMessage, client.clientId, senderId);
                 ws.send(JSON.stringify(personalizedMessage));
             }
         });
-    };
+    }; 
 
     ws.on('message', (message) => {
         
