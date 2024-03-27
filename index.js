@@ -74,7 +74,7 @@ wss.on('connection', (ws) => {
         Object.values(rooms[roomId].clients).forEach(client => {
             if (client.ws.readyState === WebSocket.OPEN) {
                 let personalizedMessage = { ...message };
-                console.log('cjsd',client)
+                console.log('cjsd',clientId)
 
                 personalizedMessage.type = client.clientId === senderId ? 'outgoing_message' : 'incoming_message';
                 console.log('personal',personalizedMessage, client.clientId, senderId);
