@@ -320,7 +320,10 @@ function sendUserList(roomId) {
 }
 
 app.use(express.json());
-app.use("/", chatHistoryRouter);
+app.use("/chat", chatHistoryRouter);
+app.get("/", (req, res) => {
+    res.send("Server is up and runnning");
+});
 
 server.listen(process.env.PORT || 5000, () => {
 	console.log(`Server started on port ${server.address().port}`);
