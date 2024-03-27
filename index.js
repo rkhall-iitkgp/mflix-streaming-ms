@@ -80,7 +80,7 @@ wss.on('connection', (ws) => {
                     personalizedMessage.type = client.username === username ? 'outgoing_message' : 'incoming_message';
                 }
                 // console.log('personal',personalizedMessage, clientId, senderId);
-                ws.send(JSON.stringify(personalizedMessage));
+                client.ws.send(JSON.stringify(personalizedMessage));
             }
         });
     }; 
