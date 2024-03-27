@@ -188,20 +188,23 @@ wss.on('connection', (ws) => {
             case 'leave_room':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (rooms[currentRoomId].creator === clientId) {
+                        sendToRoom(currentRoomId, { type: 'room_closed' });
                         rooms[currentRoomId].clients[clientId].ws.close();
                         delete rooms[currentRoomId].clients[clientId];
                         
                     } else {
+                    sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId, username: data.username });
                     rooms[currentRoomId].clients[clientId].ws.close();
                     delete rooms[currentRoomId].clients[clientId];
                     }
                     if (Object.keys(rooms[currentRoomId].clients).length === 0) {
+                        sendToRoom(currentRoomId, { type: 'room_closed' });
                         delete rooms[currentRoomId];
                     } else {
                         sendUserList(currentRoomId);
                     }
                 }
-                sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId, username: data.username });
+                // sendToRoom(currentRoomId, { type: 'user_left', clientId: clientId, username: data.username });
 
                 const message = new partyChatModel({
                     roomId: currentRoomId,
