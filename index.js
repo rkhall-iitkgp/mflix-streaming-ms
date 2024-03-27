@@ -140,22 +140,44 @@ wss.on('connection', (ws) => {
                 }
                 break;
 
-            case 'button_press':
-                if (currentRoomId && rooms[currentRoomId]) {
-                    const { button, isActive } = data;
-                    rooms[currentRoomId].buttonPress[button] = isActive;
-                    sendToRoom(currentRoomId, { type: 'button_state_change', button: button, isActive: isActive });
+            // case 'button_press':
+            //     if (currentRoomId && rooms[currentRoomId]) {
+            //         const { button, isActive } = data;
+            //         rooms[currentRoomId].buttonPress[button] = isActive;
+            //         sendToRoom(currentRoomId, { type: 'button_state_change', button: button, isActive: isActive });
 
-                    const message = new partyChatModel({
-                        roomId: currentRoomId,
-                        messages: [
-                            {
-                                username: data.username,
-                                // content: data.content,
-                                event: data.event
-                            }
-                        ]
-                    });
+            //         const message = new partyChatModel({
+            //             roomId: currentRoomId,
+            //             messages: [
+            //                 {
+            //                     username: data.username,
+            //                     // content: data.content,
+            //                     event: data.event
+            //                 }
+            //             ]
+            //         });
+            //     }
+            //     break;
+            case 'seek':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    const dir = data.seekTime > data.currentTime ? 'forward' : 'backward';
+
+                    let message = {
+                        username: data.username,
+                        clientId: clientId,
+                        seekTime: data.seekTime,
+                    }
+                    if (dir === 'forward') {
+                        sendToRoom(currentRoomId, {
+                            ...message,
+                            type: 'seek_forward',
+                        }, clientId);
+                    } else {
+                        sendToRoom(currentRoomId, {
+                            ...message,
+                            type: 'seek_backward',
+                        }, clientId);
+                    }
                 }
                 break;
             case 'leave_room':
