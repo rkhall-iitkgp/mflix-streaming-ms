@@ -70,10 +70,13 @@ wss.on('connection', (ws) => {
     let currentRoomId = null;
     const clientId = uuidv4();
 
-    const sendToRoom = (roomId, message) => {
+    const sendToRoom = (roomId, message, senderId) => {
         Object.values(rooms[roomId].clients).forEach(client => {
             if (client.ws.readyState === WebSocket.OPEN) {
-                client.ws.send(JSON.stringify(message));
+                let personalizedMessage = { ...message };
+
+                personalizedMessage.type == client.clientId == senderId ? 'outgoing_message' : 'incoming_message';
+                client.ws.send(JSON.stringify(personalizedMessage));
             }
         });
     };
@@ -103,7 +106,7 @@ wss.on('connection', (ws) => {
                     roomToJoin.clients[clientId] = {ws, username: data.username};
                     console.log("hi3",data);
                     ws.send(JSON.stringify({ type: 'joined_room', roomId: currentRoomId, roomCode: roomToJoin.roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink }));
-                    sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} joined the room`, username: 'Server' } });
+                    // sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} joined the room`, username: 'Server' } });
 
                     Object.entries(roomToJoin.buttonPress).forEach(([button, press]) => {
                         ws.send(JSON.stringify({ type: 'button_press', button: button, press: press }));
@@ -121,7 +124,7 @@ wss.on('connection', (ws) => {
                 if (currentRoomId && rooms[currentRoomId]) {
                     const chatMessage = { content: data.content, username: data.username };
                     rooms[currentRoomId].chatHistory.push(chatMessage); // Save to chat history
-                    sendToRoom(currentRoomId, { type: 'chat', content: chatMessage });
+                    sendToRoom(currentRoomId, { type: 'chat', content: chatMessage }, clientId);
 
                     const message = new partyChatModel({
                         roomId: currentRoomId,
