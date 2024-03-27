@@ -93,7 +93,7 @@ wss.on('connection', (ws) => {
                 currentRoomId = uuidv4();
                 const roomCode = uuidv4().substring(0, 8);
                 rooms[currentRoomId] = { clients: { [clientId]: {ws, username: data.username, videoLink: data.videoLink } }, roomCode: roomCode, buttonPress: {}, chatHistory: [], creator: clientId };
-                ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode, username, clientId: clientId, videoLink: data.videoLink }));
+                ws.send(JSON.stringify({ type: 'room_created', roomId: currentRoomId, roomCode: roomCode, username: data.username, clientId: clientId, videoLink: data.videoLink }));
                 // sendToRoom(currentRoomId, { type: 'chat', content: { content: `${data.username} created the room`, username: 'Server' } });
                 break;
 
