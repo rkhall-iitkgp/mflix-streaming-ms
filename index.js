@@ -180,6 +180,11 @@ wss.on('connection', (ws) => {
                     }
                 }
                 break;
+            case 'play_pause':
+                if (currentRoomId && rooms[currentRoomId]) {
+                    sendToRoom(currentRoomId, { type: 'play_pause', isPlaying: data.isPlaying, username: data.username}, clientId);
+                }
+                break;
             case 'leave_room':
                 if (currentRoomId && rooms[currentRoomId]) {
                     if (rooms[currentRoomId].creator === clientId) {
