@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.0.26",
     "aws-sdk": "^2.1584.0",
     "axios": "^1.6.8",
     "body-parser": "^1.20.2",
