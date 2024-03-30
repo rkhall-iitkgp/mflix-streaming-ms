@@ -5,7 +5,9 @@ const WebSocket = require("ws");
 const dotenv = require("dotenv");
 const path = require("path");
 dotenv.config();
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const bucketName = "mflix-vids";
+ffmpeg.setFfmpegPath(ffmpegInstaller.path);
 const s3 = new AWS.S3({
 	accessKeyId: process.env.AWS_ACCESS_ID,
 	secretAccessKey: process.env.AWS_ACCESS_SECRET_KEY,
