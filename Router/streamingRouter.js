@@ -39,6 +39,7 @@ router.post("/upload", (req, res) => {
 				}
 			});
 			deleteLocalFile(uploadPath);
+			console.log("uploadurl", uploadurl);
 			res.json({
 				message: "Video uploaded successfully.",
 				uploadurl,
@@ -95,6 +96,7 @@ router.post("/upload-from-url", async (req, res) => {
 					}
 				});
 				deleteLocalFile(filePath);
+				console.log("uploadurl", uploadurl);
 				res.json({
 					uploadurl,
 					message: "Video uploaded successfully.",
